@@ -55,7 +55,7 @@ class FinanceTests(TestCase):
     def test_add_transaction_view(self):
         response = self.client.get(reverse('add_transaction'))
         self.assertEqual(response.status_code, 200)
-
+        
         response = self.client.post(reverse('add_transaction'), {
             'date': timezone.now().date(),
             'amount': '25.00',
