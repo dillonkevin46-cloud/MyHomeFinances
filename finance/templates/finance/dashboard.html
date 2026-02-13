@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>Dashboard - {{ month }}/{{ year }}</h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'add_transaction' %}" class="btn btn-primary">Add Transaction</a>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link {% if not account_filter or account_filter == 'All' %}active{% endif %}" href="?month={{ month }}&year={{ year }}&account=All">All</a>
+    </li>
+    {% for acc in accounts %}
+    <li class="nav-item">
+        <a class="nav-link {% if account_filter == acc.name %}active{% endif %}" href="?month={{ month }}&year={{ year }}&account={{ acc.name }}">{{ acc.name }}</a>
+    </li>
+    {% endfor %}
+</ul>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-header">Total Budget</div>
+            <div class="card-body">
+                <h5 class="card-title">${{ total_budget|floatformat:2 }}</h5>
+                <p class="card-text text-muted">Limit + Rollover (Global)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-header">Total Expenses</div>
+            <div class="card-body">
+                <h5 class="card-title text-danger">${{ total_expenses|floatformat:2 }}</h5>
+                <p class="card-text text-muted">
+                    {% if account_filter and account_filter != 'All' %}(Filtered){% else %}(Global){% endif %}
+                    <br>
+                    Unexpected: ${{ unexpected_expenses|floatformat:2 }}
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-header">Remaining</div>
+            <div class="card-body">
+                <h5 class="card-title {% if remaining < 0 %}text-danger{% else %}text-success{% endif %}">
+                    ${{ remaining|floatformat:2 }}
+                </h5>
+                <p class="card-text text-muted">(Global Remaining)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Budget vs Actual (Global)</div>
+            <div class="card-body">
+                <canvas id="budgetChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Expense Breakdown by Owner (Global)</div>
+            <div class="card-body">
+                <canvas id="ownerChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <h3>Transactions {% if account_filter and account_filter != 'All' %}- {{ account_filter }}{% endif %}</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Owner</th>
+                    <th>Amount</th>
+                    <th>Unexpected</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td>{{ t.date }}</td>
+                    <td>{{ t.description }}</td>
+                    <td>{{ t.category }}</td>
+                    <td>{{ t.account }}</td>
+                    <td>${{ t.amount|floatformat:2 }}</td>
+                    <td>{% if t.is_unexpected %}<span class="badge bg-warning text-dark">Yes</span>{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">No transactions found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const budgetData = JSON.parse('{{ budget_vs_actual_json|escapejs }}');
+    const ownerData = JSON.parse('{{ owner_data_json|escapejs }}');
+
+    // Budget Chart
+    new Chart(document.getElementById('budgetChart'), {
+        type: 'doughnut',
+        data: {
+            labels: budgetData.labels,
+            datasets: [{
+                data: budgetData.data,
+                backgroundColor: ['#28a745', '#dc3545']
+            }]
+        }
+    });
+
+    // Owner Chart
+    new Chart(document.getElementById('ownerChart'), {
+        type: 'pie',
+        data: {
+            labels: ownerData.labels,
+            datasets: [{
+                data: ownerData.data,
+                backgroundColor: ['#007bff', '#e83e8c', '#6610f2']
+            }]
+        }
+    });
+</script>
+{% endblock %}
